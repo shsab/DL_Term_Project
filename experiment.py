@@ -193,7 +193,7 @@ if __name__ == '__main__':
 
     # Prepare the dataset for the regression model
     stock_data = np.asarray(stock_data)
-    synth_data = synth_data[:len(stock_data)]
+    synth_data = synthetic_data[:len(stock_data)]
     n_events = len(stock_data)
 
     # Split data on train and test
