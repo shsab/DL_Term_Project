@@ -41,7 +41,7 @@ With respect to the loss functions:
 There are three training phases:
 - **Phase I**: Training the Autoencoder
 - **Phase II**: Training the supervisor to capture the temporal behavior.
-- **Phase III**: The combined  training of all components. We try to minimize all three loss functions in this phase.
+- **Phase III**: The combined training of generator, discriminator and embedder. We try to minimize all three loss functions in this phase. Based on the paper's suggestion the generator and embedder are trained twice the discriminator in this phase.
 
 ## Result:
 
