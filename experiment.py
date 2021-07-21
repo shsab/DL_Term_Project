@@ -84,7 +84,7 @@ if __name__ == '__main__':
         synthysizer = TimeGAN.load(os.path.join(os.path.dirname(__file__), 'model', 'synthesizer_stock.pkl'))
     else:
         synthysizer = TimeGAN(model_parameters=gan_args, hidden_dim=24, seq_len=seq_len, n_seq=n_seq, gamma=1)
-        synthysizer.train(stock_data, train_steps=50000)
+        synthysizer.train(stock_data, train_steps=30000)
         # synthysizer.save(os.path.join(os.path.dirname(__file__), 'model', 'synthesizer_stock.pkl'))
 
     synthetic_data = synthysizer.sample(len(stock_data))
@@ -256,3 +256,16 @@ if __name__ == '__main__':
     results = pd.DataFrame(metrics_dict, index=['Real', 'Synthetic'])
     results.to_csv(os.path.join(os.path.dirname(__file__), 'data', 'train_synth_test_real.csv'))
     print(results)
+
+    plt.rcParams["figure.figsize"] = [7.00, 1.50]
+    plt.rcParams["figure.autolayout"] = True
+    fig, axs = plt.subplots(1, 1)
+    data = np.random.random((10, 3))
+    columns = ("Column I", "Column II", "Column III")
+    axs.axis('tight')
+    axs.axis('off')
+    the_table = axs.table(cellText=results.apply(lambda x: round(x, 4)).reset_index().values,
+                          colLabels=list(results.reset_index().columns),
+                          loc='center')
+    # fig.tight_layout()
+    plt.savefig(os.path.join(os.path.dirname(__file__), 'graphs', 'train_synth_test_real.png'))
