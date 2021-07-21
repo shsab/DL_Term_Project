@@ -57,6 +57,13 @@ I have ploted the Synthetic vs real data in two ways:
   
   ![synthetic_vs_real.png](graphs/synthetic_vs_real.png)
 
+I also trained the model on real data then test it on real data and train another model on synthesized data 
+and test it on real data and compared the metrics.
+
+![train_synth_test_real.png](graphs/train_synth_test_real.png)
+
+The synthetic data is looking good after 20K steps. The initial plan was to train for 
+50K steps but for some reason it is failing. I run out of time to fix that.
 
 ## References:
 - https://www.smartinsights.com/internet-marketing-statistics/happens-online-60-seconds/
