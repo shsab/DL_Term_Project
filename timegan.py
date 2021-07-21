@@ -1,17 +1,6 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow import function
-from tensorflow import GradientTape 
-from tensorflow import sqrt 
-from tensorflow import abs 
-from tensorflow import reduce_mean 
-from tensorflow import ones_like 
-from tensorflow import zeros_like 
-from tensorflow import convert_to_tensor
-from tensorflow import float32
-from tensorflow import data as tfdata
-from tensorflow import config as tfconfig
-from tensorflow import nn
 
 from joblib import dump, load
 import pandas as pd
@@ -59,10 +48,10 @@ def make_keras_picklable():
 
 class GanModel():
     def __init__(self, model_parameters):
-        gpu_devices = tfconfig.list_physical_devices('GPU')
+        gpu_devices = tf.config.list_physical_devices('GPU')
         if len(gpu_devices) > 0:
             try:
-                tfconfig.experimental.set_memory_growth(gpu_devices[0], True)
+                tf.config.experimental.set_memory_growth(gpu_devices[0], True)
             except:
                 # Invalid device or cannot modify virtual devices once initialized.
                 pass
@@ -119,7 +108,7 @@ class GanModel():
         gpu_devices = tf.config.list_physical_devices('GPU')
         if len(gpu_devices) > 0:
             try:
-                tfconfig.experimental.set_memory_growth(gpu_devices[0], True)
+                tf.config.experimental.set_memory_growth(gpu_devices[0], True)
             except:
                 # Invalid device or cannot modify virtual devices once initialized.
                 pass
@@ -185,19 +174,19 @@ class TimeGAN(GanModel):
 
     @function
     def train_autoencoder(self, x, opt):
-        with GradientTape() as tape:
+        with tf.GradientTape() as tape:
             x_tilde = self.autoencoder(x)
             embedding_loss_t0 = self._mse(x, x_tilde)
-            e_loss_0 = 10 * sqrt(embedding_loss_t0)
+            e_loss_0 = 10 * tf.sqrt(embedding_loss_t0)
 
         var_list = self.embedder.trainable_variables + self.recovery.trainable_variables
         gradients = tape.gradient(e_loss_0, var_list)
         opt.apply_gradients(zip(gradients, var_list))
-        return sqrt(embedding_loss_t0)
+        return tf.sqrt(embedding_loss_t0)
 
     @function
     def train_supervisor(self, x, opt):
-        with GradientTape() as tape:
+        with tf.GradientTape() as tape:
             h = self.embedder(x)
             h_hat_supervised = self.supervisor(h)
             g_loss_s = self._mse(h[:, 1:, :], h_hat_supervised[:, 1:, :])
@@ -210,31 +199,31 @@ class TimeGAN(GanModel):
 
     @function
     def train_embedder(self,x, opt):
-        with GradientTape() as tape:
+        with tf.GradientTape() as tape:
             h = self.embedder(x)
             h_hat_supervised = self.supervisor(h)
             generator_loss_supervised = self._mse(h[:, 1:, :], h_hat_supervised[:, 1:, :])
 
             x_tilde = self.autoencoder(x)
             embedding_loss_t0 = self._mse(x, x_tilde)
-            e_loss = 10 * sqrt(embedding_loss_t0) + 0.1 * generator_loss_supervised
+            e_loss = 10 * tf.sqrt(embedding_loss_t0) + 0.1 * generator_loss_supervised
 
         var_list = self.embedder.trainable_variables + self.recovery.trainable_variables
         gradients = tape.gradient(e_loss, var_list)
         opt.apply_gradients(zip(gradients, var_list))
-        return sqrt(embedding_loss_t0)
+        return tf.sqrt(embedding_loss_t0)
 
     def discriminator_loss(self, x, z):
         y_real = self.discriminator_model(x)
-        discriminator_loss_real = self._bce(y_true=ones_like(y_real),
+        discriminator_loss_real = self._bce(y_true=tf.ones_like(y_real),
                                             y_pred=y_real)
 
         y_fake = self.adversarial_supervised(z)
-        discriminator_loss_fake = self._bce(y_true=zeros_like(y_fake),
+        discriminator_loss_fake = self._bce(y_true=tf.zeros_like(y_fake),
                                             y_pred=y_fake)
 
         y_fake_e = self.adversarial_embedded(z)
-        discriminator_loss_fake_e = self._bce(y_true=zeros_like(y_fake_e),
+        discriminator_loss_fake_e = self._bce(y_true=tf.zeros_like(y_fake_e),
                                               y_pred=y_fake_e)
         return (discriminator_loss_real +
                 discriminator_loss_fake +
@@ -242,21 +231,21 @@ class TimeGAN(GanModel):
 
     @staticmethod
     def calc_generator_moments_loss(y_true, y_pred):
-        y_true_mean, y_true_var = nn.moments(x=y_true, axes=[0])
-        y_pred_mean, y_pred_var = nn.moments(x=y_pred, axes=[0])
-        g_loss_mean = reduce_mean(abs(y_true_mean - y_pred_mean))
-        g_loss_var = reduce_mean(abs(sqrt(y_true_var + 1e-6) - sqrt(y_pred_var + 1e-6)))
+        y_true_mean, y_true_var = tf.nn.moments(x=y_true, axes=[0])
+        y_pred_mean, y_pred_var = tf.nn.moments(x=y_pred, axes=[0])
+        g_loss_mean = tf.reduce_mean(tf.abs(y_true_mean - y_pred_mean))
+        g_loss_var = tf.reduce_mean(tf.abs(tf.sqrt(y_true_var + 1e-6) - tf.sqrt(y_pred_var + 1e-6)))
         return g_loss_mean + g_loss_var
 
     @function
     def train_generator(self, x, z, opt):
-        with GradientTape() as tape:
+        with tf.GradientTape() as tape:
             y_fake = self.adversarial_supervised(z)
-            generator_loss_unsupervised = self._bce(y_true=ones_like(y_fake),
+            generator_loss_unsupervised = self._bce(y_true=tf.ones_like(y_fake),
                                                     y_pred=y_fake)
 
             y_fake_e = self.adversarial_embedded(z)
-            generator_loss_unsupervised_e = self._bce(y_true=ones_like(y_fake_e),
+            generator_loss_unsupervised_e = self._bce(y_true=tf.ones_like(y_fake_e),
                                                       y_pred=y_fake_e)
             h = self.embedder(x)
             h_hat_supervised = self.supervisor(h)
@@ -267,7 +256,7 @@ class TimeGAN(GanModel):
 
             generator_loss = (generator_loss_unsupervised +
                               generator_loss_unsupervised_e +
-                              100 * sqrt(generator_loss_supervised) +
+                              100 * tf.sqrt(generator_loss_supervised) +
                               100 * generator_moment_loss)
 
         var_list = self.generator_aux.trainable_variables + self.supervisor.trainable_variables
@@ -277,7 +266,7 @@ class TimeGAN(GanModel):
 
     @function
     def train_discriminator(self, x, z, opt):
-        with GradientTape() as tape:
+        with tf.GradientTape() as tape:
             discriminator_loss = self.discriminator_loss(x, z)
 
         var_list = self.discriminator.trainable_variables
@@ -286,8 +275,8 @@ class TimeGAN(GanModel):
         return discriminator_loss
 
     def get_batch_data(self, data, n_windows):
-        data = convert_to_tensor(data, dtype=float32)
-        return iter(tfdata.Dataset.from_tensor_slices(data)
+        data = tf.convert_to_tensor(data, dtype=tf.float32)
+        return iter(tf.data.Dataset.from_tensor_slices(data)
                                 .shuffle(buffer_size=n_windows)
                                 .batch(self.batch_size).repeat())
 
@@ -296,7 +285,7 @@ class TimeGAN(GanModel):
             yield np.random.uniform(low=0, high=1, size=(self.seq_len, self.n_seq))
 
     def get_batch_noise(self):
-        return iter(tfdata.Dataset.from_generator(self._generate_noise, output_types=float32)
+        return iter(tf.data.Dataset.from_generator(self._generate_noise, output_types=tf.float32)
                                 .batch(self.batch_size)
                                 .repeat())
 
@@ -321,8 +310,8 @@ class TimeGAN(GanModel):
         step_g_loss_u = step_g_loss_s = step_g_loss_v = step_e_loss_t0 = step_d_loss = 0
         for _ in tqdm(range(train_steps), desc='Joint networks training'):
 
-            #Train the generator (k times as often as the discriminator)
-            # Here k=2
+            # Train the generator and embedder (k times as often as the discriminator)
+            # Suggested by the original papaer
             for _ in range(2):
                 X_ = next(self.get_batch_data(data, n_windows=len(data)))
                 Z_ = next(self.get_batch_noise())

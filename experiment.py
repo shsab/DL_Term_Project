@@ -3,7 +3,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+import tensorflow as tf
+import tensorflow.keras as keras
+from tensorflow import function
 from timegan import TimeGAN
 
 import os
@@ -78,26 +80,15 @@ if __name__ == '__main__':
     stock_data = get_data(seq_len=seq_len)
     print(len(stock_data), stock_data[0].shape)
 
-    if path.exists(os.path.join(os.path.dirname(__file__), 'model', 'synthesizer_stock.pkl')):
+    if os.path.exists(os.path.join(os.path.dirname(__file__), 'model', 'synthesizer_stock.pkl')):
         synthysizer = TimeGAN.load(os.path.join(os.path.dirname(__file__), 'model', 'synthesizer_stock.pkl'))
     else:
         synthysizer = TimeGAN(model_parameters=gan_args, hidden_dim=24, seq_len=seq_len, n_seq=n_seq, gamma=1)
-        synthysizer.train(stock_data, train_steps=200)
-        # synth.save(os.path.join(os.path.dirname(__file__), 'model', 'synthesizer_stock.pkl'))
+        synthysizer.train(stock_data, train_steps=50000)
+        # synthysizer.save(os.path.join(os.path.dirname(__file__), 'model', 'synthesizer_stock.pkl'))
 
-    synth_data = synthysizer.sample(len(stock_data))
-    print(synth_data.shape)
-    try:
-        np.savetxt(os.path.join(os.path.dirname(__file__), 'data', 'synthesized_stock.csv'), synth_data, delimiter=',')
-    except Exception:
-        print('Saving synthesized_stock failed!')
-        pass
-
-    try:
-        pd.DataFrame(synth_data).to_csv(os.path.join(os.path.dirname(__file__), 'data', 'synthesized_stock_df.csv'))
-    except Exception:
-        print('Saving synthesized_stock failed!')
-        pass
+    synthetic_data = synthysizer.sample(len(stock_data))
+    print(synthetic_data.shape)
 
     # Reshaping the data
     cols = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
@@ -111,10 +102,16 @@ if __name__ == '__main__':
 
     for j, col in enumerate(cols):
         df = pd.DataFrame({'Real': stock_data[obs][:, j],
-                           'Synthetic': synth_data[obs][:, j]})
+                           'Synthetic': synthetic_data[obs][:, j]})
         df.plot(ax=axes[j],
                 title=col,
                 secondary_y='Synthetic data', style=['-', '--'])
+
+        try:
+            df.to_csv(os.path.join(os.path.dirname(__file__), 'data', f'synthesized_stock_df_{col}.csv'))
+        except Exception:
+            print('Saving synthesized_stock failed!')
+            pass
     fig.tight_layout()
     plt.savefig(os.path.join(os.path.dirname(__file__), 'graphs', 'data_comparison.png'))
 
@@ -122,7 +119,7 @@ if __name__ == '__main__':
     idx = np.random.permutation(len(stock_data))[:sample_size]
 
     real_sample = np.asarray(stock_data)[idx]
-    synthetic_sample = np.asarray(synth_data)[idx]
+    synthetic_sample = np.asarray(synthetic_data)[idx]
 
     # for the purpose of comparision we need the data to be 2-Dimensional. For that reason we are going to use only two componentes for both the PCA and TSNE.
     synth_data_reduced = real_sample.reshape(-1, seq_len)
@@ -180,3 +177,82 @@ if __name__ == '__main__':
 
     # fig.tight_layout()
     plt.savefig(os.path.join(os.path.dirname(__file__), 'graphs', 'synthetic_vs_real.png'))
+
+    def simple_RNN_regressor(units):
+        opt = keras.optimizers.Adam(name='AdamOpt')
+        loss = keras.losses.MeanAbsoluteError(name='MAE')
+        model = keras.Sequential()
+        model.add(keras.layers.GRU(units=units,
+                      name=f'RNN_1'))
+        model.add(keras.layers.Dense(units=6,
+                        activation='sigmoid',
+                        name='OUT'))
+        model.compile(optimizer=opt, loss=loss)
+        return model
+
+
+    # Prepare the dataset for the regression model
+    stock_data = np.asarray(stock_data)
+    synth_data = synth_data[:len(stock_data)]
+    n_events = len(stock_data)
+
+    # Split data on train and test
+    idx = np.arange(n_events)
+    n_train = int(.75 * n_events)
+    train_idx = idx[:n_train]
+    test_idx = idx[n_train:]
+
+    # Define the X for synthetic and real data
+    X_stock_train = stock_data[train_idx, :seq_len - 1, :]
+    X_synth_train = synth_data[train_idx, :seq_len - 1, :]
+
+    X_stock_test = stock_data[test_idx, :seq_len - 1, :]
+    y_stock_test = stock_data[test_idx, -1, :]
+
+    # Define the y for synthetic and real datasets
+    y_stock_train = stock_data[train_idx, -1, :]
+    y_synth_train = synth_data[train_idx, -1, :]
+
+    print('Synthetic X train: {}'.format(X_synth_train.shape))
+    print('Real X train: {}'.format(X_stock_train.shape))
+
+    print('Synthetic y train: {}'.format(y_synth_train.shape))
+    print('Real y train: {}'.format(y_stock_train.shape))
+
+    print('Real X test: {}'.format(X_stock_test.shape))
+    print('Real y test: {}'.format(y_stock_test.shape))
+
+    # Training the model with the real train data
+    ts_real = simple_RNN_regressor(12)
+    early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss')
+
+    real_train = ts_real.fit(x=X_stock_train,
+                             y=y_stock_train,
+                             validation_data=(X_stock_test, y_stock_test),
+                             epochs=200,
+                             batch_size=128,
+                             callbacks=[early_stopping])
+    # Training the model with the synthetic data
+    ts_synth = simple_RNN_regressor(12)
+    synth_train = ts_synth.fit(x=X_synth_train,
+                               y=y_synth_train,
+                               validation_data=(X_stock_test, y_stock_test),
+                               epochs=200,
+                               batch_size=128,
+                               callbacks=[early_stopping])
+    # Summarize the metrics here as a pandas dataframe
+    from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_log_error
+
+    real_predictions = ts_real.predict(X_stock_test)
+    synth_predictions = ts_synth.predict(X_stock_test)
+
+    metrics_dict = {'r2': [r2_score(y_stock_test, real_predictions),
+                           r2_score(y_stock_test, synth_predictions)],
+                    'MAE': [mean_absolute_error(y_stock_test, real_predictions),
+                            mean_absolute_error(y_stock_test, synth_predictions)],
+                    'MRLE': [mean_squared_log_error(y_stock_test, real_predictions),
+                             mean_squared_log_error(y_stock_test, synth_predictions)]}
+
+    results = pd.DataFrame(metrics_dict, index=['Real', 'Synthetic'])
+    results.to_csv(os.path.join(os.path.dirname(__file__), 'data', 'train_synth_test_real.csv'))
+    print(results)
