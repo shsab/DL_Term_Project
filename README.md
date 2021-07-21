@@ -43,7 +43,22 @@ There are three training phases:
 - **Phase II**: Training the supervisor to capture the temporal behavior.
 - **Phase III**: The combined  training of all components. We try to minimize all three loss functions in this phase.
 
-## Reeferences:
+## Result:
+
+I have ploted the Synthetic vs real data in two ways:
+- for each variable I have plotted sample of the data
+  
+
+  ![data_comparison.png](graphs/data_comparison.png)
+
+    
+- Reduce the dimension using PCA and TSNE and plot the PCA and TSNE in 2 dimension to compare the data
+
+  
+  ![synthetic_vs_real.png](graphs/synthetic_vs_real.png)
+
+
+## References:
 - https://www.smartinsights.com/internet-marketing-statistics/happens-online-60-seconds/
 - https://papers.nips.cc/paper/2014/file/5ca3e9b122f61f8f06494c97b1afccf3-Paper.pdf
 - https://papers.nips.cc/paper/2019/file/c9efe5f26cd17ba6216bbe2a7d26d490-Paper.pdf
