@@ -6,6 +6,8 @@ import seaborn as sns
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow import function
+from tqdm.keras import TqdmCallback
+
 from timegan import TimeGAN
 
 import os
@@ -75,6 +77,7 @@ if __name__ == '__main__':
     batch_size = 128
     log_step = 100
     learning_rate = 5e-4
+    net_type = 'GRU'
     gan_args = [batch_size, learning_rate, noise_dim, 24, 2, (0, 1), dim]
 
     stock_data = get_data(seq_len=seq_len)
@@ -84,7 +87,7 @@ if __name__ == '__main__':
         synthysizer = TimeGAN.load(os.path.join(os.path.dirname(__file__), 'model', 'synthesizer_stock.pkl'))
     else:
         synthysizer = TimeGAN(model_parameters=gan_args, hidden_dim=24, seq_len=seq_len, n_seq=n_seq, gamma=1)
-        synthysizer.train(stock_data, train_steps=30000)
+        synthysizer.train(stock_data, train_steps=10000)
         # synthysizer.save(os.path.join(os.path.dirname(__file__), 'model', 'synthesizer_stock.pkl'))
 
     synthetic_data = synthysizer.sample(len(stock_data))
@@ -226,12 +229,17 @@ if __name__ == '__main__':
     ts_real = simple_RNN_regressor(12)
     early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss')
 
+    # Training the model with the real train data
+    ts_real = simple_RNN_regressor(12)
+    early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss')
+
     real_train = ts_real.fit(x=X_stock_train,
                              y=y_stock_train,
                              validation_data=(X_stock_test, y_stock_test),
                              epochs=200,
                              batch_size=128,
-                             callbacks=[early_stopping])
+                             verbose=0,
+                             callbacks=[TqdmCallback(verbose=1)])
     # Training the model with the synthetic data
     ts_synth = simple_RNN_regressor(12)
     synth_train = ts_synth.fit(x=X_synth_train,
@@ -239,7 +247,8 @@ if __name__ == '__main__':
                                validation_data=(X_stock_test, y_stock_test),
                                epochs=200,
                                batch_size=128,
-                               callbacks=[early_stopping])
+                               verbose=0,
+                               callbacks=[TqdmCallback(verbose=1)])
     # Summarize the metrics here as a pandas dataframe
     from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_log_error
 
@@ -260,8 +269,6 @@ if __name__ == '__main__':
     plt.rcParams["figure.figsize"] = [7.00, 1.50]
     plt.rcParams["figure.autolayout"] = True
     fig, axs = plt.subplots(1, 1)
-    data = np.random.random((10, 3))
-    columns = ("Column I", "Column II", "Column III")
     axs.axis('tight')
     axs.axis('off')
     the_table = axs.table(cellText=results.apply(lambda x: round(x, 4)).reset_index().values,

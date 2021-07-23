@@ -292,7 +292,7 @@ class TimeGAN(GanModel):
     def train(self, data, train_steps):
         ## Embedding network training
         autoencoder_opt = keras.optimizers.Adam(learning_rate=self.lr)
-        for _ in tqdm(range(train_steps), desc='Emddeding network training'):
+        for _ in tqdm(range(train_steps), desc='Embedding network training'):
             X_ = next(self.get_batch_data(data, n_windows=len(data)))
             step_e_loss_t0 = self.train_autoencoder(X_, autoencoder_opt)
 
