@@ -77,7 +77,6 @@ if __name__ == '__main__':
     batch_size = 128
     log_step = 100
     learning_rate = 5e-4
-    net_type = 'GRU'
     gan_args = [batch_size, learning_rate, noise_dim, 24, 2, (0, 1), dim]
 
     stock_data = get_data(seq_len=seq_len)
@@ -224,10 +223,6 @@ if __name__ == '__main__':
 
     print('Real X test: {}'.format(X_stock_test.shape))
     print('Real y test: {}'.format(y_stock_test.shape))
-
-    # Training the model with the real train data
-    ts_real = simple_RNN_regressor(12)
-    early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss')
 
     # Training the model with the real train data
     ts_real = simple_RNN_regressor(12)
