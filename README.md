@@ -62,7 +62,7 @@ and test it on real data and compared the metrics.
 
 ![train_synth_test_real.png](graphs/train_synth_test_real.png)
 
-The synthetic data is looking good after 20K steps. The initial plan was to train for 
+The synthetic data is looking good after 30K steps. The initial plan was to train for 
 50K steps but for some reason it is failing. I run out of time to fix that.
 
 ## References:
