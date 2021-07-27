@@ -43,6 +43,11 @@ There are three training phases:
 - **Phase II**: Training the supervisor to capture the temporal behavior.
 - **Phase III**: The combined training of generator, discriminator and embedder. We try to minimize all three loss functions in this phase. Based on the paper's suggestion the generator and embedder are trained twice the discriminator in this phase.
 
+## Data:
+
+Data is fetched from Yahoo Finance and saved and shared in my Google Drive. I used the data for Google, Amazon, 
+and Apple stock for last 3 to 5 years.
+
 ## Result:
 
 I have experimented with 10K, 20K, and 50K then plotted the Synthetic vs real data in two ways:
